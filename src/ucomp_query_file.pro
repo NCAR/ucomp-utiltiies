@@ -11,7 +11,7 @@
 ;
 ; :Params:
 ;   filename : in, required, type=string
-;     CoMP FITS file to query
+;     UCoMP FITS file to query
 ;
 ; :Keywords:
 ;   datatype : out, optional, type=string
@@ -36,6 +36,8 @@
 ;     polarization angle `POLANGLE` keyword
 ;   ret_angle : out, optional, type=fltarr
 ;     retarder angle `RETANGLE` keyword
+;   ext_titles : out, optional, type=strarr
+;     extension titles
 ;-
 pro ucomp_query_file, filename, $
                       datatype=datatype, $
@@ -46,7 +48,8 @@ pro ucomp_query_file, filename, $
                       observation_id=observation_id, $
                       observation_plan=observation_plan, $
                       pol_angle=pol_angle, $
-                      ret_angle=ret_angle
+                      ret_angle=ret_angle, $
+                      ext_titles=ext_titles
   compile_opt idl2
 
   fits_open, filename, fcb
@@ -60,6 +63,7 @@ pro ucomp_query_file, filename, $
     observation_id = ''
     observation_plan = ''
     pol_angle = !null
+    ext_titles = !null
     return
   endif
 
@@ -69,6 +73,7 @@ pro ucomp_query_file, filename, $
   wavelength         = fltarr(n_extensions)
   pol_angle          = fltarr(n_extensions)
   ret_angle          = fltarr(n_extensions)
+  ext_titles         = strarr(n_extensions)
 
   fits_read, fcb, data, header, /header_only, exten_no=0
   fits_read, fcb, data, ext_header, /header_only, exten_no=1
@@ -87,11 +92,12 @@ pro ucomp_query_file, filename, $
   if (arg_present(onband) $
         || arg_present(wavelength) $
         || arg_present(pol_angle) $
-        || arg_present(ret_angle)) then begin
+        || arg_present(ret_angle) $
+        || arg_present(ext_titles)) then begin
     for i = 0L, n_extensions - 1L do begin
       fits_read, fcb, data, ext_header, /header_only, exten_no=i + 1L
 
-      onband[i] = sxpar(header, 'ONBAND', count=count)
+      onband[i] = sxpar(ext_header, 'ONBAND', count=count)
       if (count eq 0L) then onband[i] = ''
       wavelength[i] = sxpar(ext_header, 'WAVELNG', count=count)
       if (count eq 0L) then wavelength[i] = !values.f_nan
@@ -99,7 +105,8 @@ pro ucomp_query_file, filename, $
       if (count eq 0L) then wavelength[i] = !values.f_nan
       ret_angle[i] = sxpar(ext_header, 'RETANGLE', count=count)
       if (count eq 0L) then ret_angle[i] = !values.f_nan
-
+      ext_titles[i] = sxpar(ext_header, 'EXTNAME', count=count)
+      if (count eq 0L) then ext_titles[i] = '<unknown>'
     endfor
   endif
 
